@@ -4,7 +4,7 @@
 
 - Tên nhóm: Team C1
 - Repository URL: `https://github.com/Hungkao/Day13-K3-TeamC1`
-- Commit SHA cuối: `PENDING_FINAL_COMMIT`
+- Commit SHA cuối: `2e8ca15aad2f385964a6f3499b72f7314375edb1`
 - Thành viên và vai trò:
   - Nguyễn Phúc Hưng — MSSV `2A202601115`: Metrics, dashboard 6 panel, SLO, alert rules và runbook.
   - Nguyễn Văn Phong — MSSV `2A202601087`: Structured logging, correlation ID và PII redaction.
@@ -59,4 +59,4 @@ Với mỗi thành viên, ghi rõ nhiệm vụ và link commit/PR tương ứng.
 | Nguyễn Phúc Hưng (`2A202601115`) | Metrics, dashboard, SLO, alert rules và runbook | [9bdbd10](https://github.com/Hungkao/Day13-K3-TeamC1/commit/9bdbd10) | Cách chuyển log thành SLI/SLO và alert dựa trên triệu chứng. |
 | Nguyễn Văn Phong (`2A202601087`) | JSON logging, correlation ID, metadata và PII redaction | [860ef78](https://github.com/Hungkao/Day13-K3-TeamC1/commit/860ef78), [2f0e945](https://github.com/Hungkao/Day13-K3-TeamC1/commit/2f0e945) | Cách nối request bằng correlation ID và scrub PII trước khi ghi log. |
 | Nguyễn Hữu Khánh Tùng (`2A202601781`) | Langfuse tracing, prompt v1/v2 và rollback evidence | [fac1c26](https://github.com/Hungkao/Day13-K3-TeamC1/commit/fac1c26), [4aa6de3](https://github.com/Hungkao/Day13-K3-TeamC1/commit/4aa6de3) | Cách liên kết prompt version, trace metadata và session/correlation ID. |
-| Nguyễn Tuấn Vũ (`2A202601845`) | Lead tích hợp, load-test safety, challenge, retriever span, bonus, kiểm thử và báo cáo | [53b8605](https://github.com/Hungkao/Day13-K3-TeamC1/commit/53b8605); commit cuối cập nhật sau nghiệm thu | Cách điều tra Metrics → Traces → Logs, kiểm soát cost, audit incident và nghiệm thu evidence trung thực. |
+| Nguyễn Tuấn Vũ (`2A202601845`) | Lead tích hợp, load-test safety, challenge, retriever span, bonus, kiểm thử và báo cáo | [53b8605](https://github.com/Hungkao/Day13-K3-TeamC1/commit/53b8605), [2e8ca15](https://github.com/Hungkao/Day13-K3-TeamC1/commit/2e8ca15) | Cách điều tra Metrics → Traces → Logs, kiểm soát cost, audit incident và nghiệm thu evidence trung thực. |
