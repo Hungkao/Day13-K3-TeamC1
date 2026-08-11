@@ -19,6 +19,7 @@ class RecordingLangfuseClient:
         self.prompt = ManagedPrompt()
         self.trace_updates: list[dict] = []
         self.generation_updates: list[dict] = []
+        self.span_updates: list[dict] = []
 
     def get_prompt(self, name: str, **kwargs):
         return self.prompt
@@ -28,6 +29,9 @@ class RecordingLangfuseClient:
 
     def update_current_generation(self, **kwargs) -> None:
         self.generation_updates.append(kwargs)
+
+    def update_current_span(self, **kwargs) -> None:
+        self.span_updates.append(kwargs)
 
 
 def test_agent_links_prompt_version_to_trace_and_generation(monkeypatch) -> None:
@@ -61,4 +65,26 @@ def test_agent_links_prompt_version_to_trace_and_generation(monkeypatch) -> None
     assert generation_update["prompt"] is client.prompt
     assert generation_update["metadata"]["prompt_version"] == "3"
     clear_contextvars()
+
+
+def test_retrieve_context_records_redacted_input_and_rag_state(monkeypatch) -> None:
+    client = RecordingLangfuseClient()
+    monkeypatch.setattr(agent_module, "get_langfuse_client", lambda: client)
+    monkeypatch.setattr(agent_module, "retrieve", lambda _: ["Refund within 7 days"])
+    monkeypatch.setitem(agent_module.STATE, "rag_slow", True)
+
+    docs = agent_module.retrieve_context.__wrapped__(
+        "Contact student@example.com about refund",
+        "refund",
+    )
+
+    assert docs == ["Refund within 7 days"]
+    assert client.span_updates == [
+        {
+            "input": {"query_preview": "Contact [REDACTED_EMAIL] about refund"},
+            "output": {"document_count": 1},
+            "metadata": {"feature": "refund", "incident_rag_slow": True},
+        }
+    ]
+    monkeypatch.setitem(agent_module.STATE, "rag_slow", False)
 

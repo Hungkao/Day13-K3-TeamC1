@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from structlog.contextvars import get_contextvars
 
 from . import metrics
+from .incidents import STATE
 from .mock_llm import FakeLLM
 from .mock_rag import retrieve
 from .pii import hash_user_id, summarize_text
@@ -23,6 +24,25 @@ class AgentResult:
     quality_score: float
 
 
+@observe(
+    name="retrieve-context",
+    as_type="retriever",
+    capture_input=False,
+    capture_output=False,
+)
+def retrieve_context(message: str, feature: str) -> list[str]:
+    docs = retrieve(message)
+    get_langfuse_client().update_current_span(
+        input={"query_preview": summarize_text(message)},
+        output={"document_count": len(docs)},
+        metadata={
+            "feature": feature,
+            "incident_rag_slow": STATE["rag_slow"],
+        },
+    )
+    return docs
+
+
 class LabAgent:
     def __init__(self, model: str = "claude-sonnet-4-5") -> None:
         self.model = model
@@ -31,7 +51,7 @@ class LabAgent:
     @observe(as_type="generation", capture_input=False, capture_output=False)
     def run(self, user_id: str, feature: str, session_id: str, message: str) -> AgentResult:
         started = time.perf_counter()
-        docs = retrieve(message)
+        docs = retrieve_context(message, feature)
         langfuse_client = get_langfuse_client()
         prompt = resolve_prompt(
             langfuse_client,

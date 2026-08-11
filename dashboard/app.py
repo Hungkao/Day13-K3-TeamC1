@@ -44,7 +44,7 @@ def compute_dashboard_metrics(records: list[dict]) -> dict:
     quality_scores = [r["quality_score"] for r in resp_sent if "quality_score" in r]
 
     errors_count = len(req_failed)
-    total_requests = len(req_received) + errors_count
+    total_requests = len(req_received)
     error_rate = (errors_count / total_requests * 100) if total_requests > 0 else 0.0
 
     error_breakdown = {}

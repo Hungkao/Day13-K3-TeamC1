@@ -1,0 +1,7 @@
+{"ts": "2026-08-11T05:26:15.752333Z", "service": "audit", "event": "incident_enabled", "payload": {"incident": "cost_spike"}}
+{"ts": "2026-08-11T05:26:19.635814Z", "service": "audit", "event": "incident_disabled", "payload": {"incident": "cost_spike"}}
+{"ts": "2026-08-11T05:27:19.196175Z", "service": "audit", "event": "incident_disabled", "payload": {"incident": "rag_slow"}}
+{"ts": "2026-08-11T05:27:21.205824Z", "service": "audit", "event": "incident_enabled", "payload": {"incident": "rag_slow"}}
+{"ts": "2026-08-11T05:27:36.029141Z", "service": "audit", "event": "incident_disabled", "payload": {"incident": "rag_slow"}}
+{"ts": "2026-08-11T05:30:51.454846Z", "service": "audit", "event": "incident_enabled", "payload": {"incident": "rag_slow"}}
+{"ts": "2026-08-11T05:30:56.108785Z", "service": "audit", "event": "incident_disabled", "payload": {"incident": "rag_slow"}}
