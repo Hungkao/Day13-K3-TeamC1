@@ -1,0 +1,17 @@
+Command:
+python scripts/detect_anomalies.py submission/evidence/incident/challenge-logs.jsonl --latency-threshold-ms 2000
+
+Result:
+{
+  "records": 12,
+  "anomaly_count": 1,
+  "anomalies": [
+    {
+      "type": "latency_p95",
+      "value": 2707.0,
+      "threshold": 2000.0
+    }
+  ]
+}
+
+Exit code: 1 (anomaly detected as designed)
