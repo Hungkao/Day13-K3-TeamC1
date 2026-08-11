@@ -4,13 +4,17 @@ slis:
   latency_p95_ms:
     objective: 3000
     target: 99.5
-    note: Replace with your group's target
+    description: 99.5% of requests must have P95 latency <= 3000ms over 28d window
   error_rate_pct:
     objective: 2
     target: 99.0
+    description: 99.0% of requests must be error-free (error rate <= 2%) over 28d window
   daily_cost_usd:
     objective: 2.5
     target: 100.0
+    description: 100% of rolling 60-minute windows must remain at or below $2.5 USD total cost
   quality_score_avg:
     objective: 0.75
     target: 95.0
+    description: 95.0% of rolling windows must maintain an average quality proxy score >= 0.75
+
