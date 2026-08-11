@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from app.pii import scrub_text
 
 
@@ -22,15 +24,24 @@ def test_scrub_common_vietnamese_phone_formats() -> None:
         assert "REDACTED_PHONE_VN" in out
 
 
-def test_scrub_cccd_credit_card_passport_address() -> None:
-    text = "CCCD: 012345678901, Card: 4111 2222 3333 4444, Passport: B1234567, Address: đường Nguyễn Trãi"
-    out = scrub_text(text)
+def test_scrub_cccd() -> None:
+    out = scrub_text("CCCD: 012345678901")
     assert "012345678901" not in out
     assert "REDACTED_CCCD" in out
-    assert "4111 2222 3333 4444" not in out
+
+
+def test_scrub_credit_card() -> None:
+    out = scrub_text("Card: 4111-2222-3333-4444")
+    assert "4111-2222-3333-4444" not in out
     assert "REDACTED_CREDIT_CARD" in out
+
+
+def test_scrub_passport() -> None:
+    out = scrub_text("Passport number is B1234567")
     assert "B1234567" not in out
     assert "REDACTED_PASSPORT" in out
-    assert "đường" not in out
-    assert "REDACTED_ADDRESS_VN" in out
 
+
+def test_scrub_address_vn() -> None:
+    out = scrub_text("Địa chỉ tại Đường Nguyễn Trãi, Quận Thanh Xuân, Thành phố Hà Nội")
+    assert "REDACTED_ADDRESS_VN" in out

@@ -22,6 +22,16 @@ app.add_middleware(CorrelationIdMiddleware)
 agent = LabAgent()
 
 
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": type(exc).__name__},
+        headers={"x-request-id": correlation_id},
+    )
+
+
 @app.on_event("startup")
 async def startup() -> None:
     log.info(
@@ -42,26 +52,9 @@ async def metrics() -> dict:
     return snapshot()
 
 
-@app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    correlation_id = getattr(request.state, "correlation_id", "unknown")
-    error_type = type(exc).__name__
-    record_error(error_type)
-    log.error(
-        "request_failed",
-        service="api",
-        error_type=error_type,
-        payload={"detail": str(exc)},
-    )
-    return JSONResponse(
-        status_code=500,
-        content={"detail": error_type},
-        headers={"x-request-id": correlation_id},
-    )
-
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: Request, body: ChatRequest) -> ChatResponse:
+    # Enrich — tất cả log sau đây tự động có các trường này
     bind_contextvars(
         user_id_hash=hash_user_id(body.user_id),
         session_id=body.session_id,
@@ -69,7 +62,7 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         model="claude-sonnet-4-5",
         env=os.getenv("APP_ENV", "dev"),
     )
-    
+
     log.info(
         "request_received",
         service="api",

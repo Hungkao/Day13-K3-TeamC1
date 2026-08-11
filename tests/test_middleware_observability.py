@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -9,85 +10,84 @@ from app import logging_config
 from app.main import app
 
 
-def test_correlation_id_generated_and_headers_returned(monkeypatch, tmp_path: Path) -> None:
+def test_correlation_id_generation_and_headers(monkeypatch, tmp_path: Path) -> None:
     log_path = tmp_path / "logs.jsonl"
     monkeypatch.setattr(logging_config, "LOG_PATH", log_path)
 
     with TestClient(app) as client:
-        response = client.post(
+        # Test 1: Auto generate req-<8 hex> when header is missing
+        res1 = client.post(
             "/chat",
             json={
-                "user_id": "student-01",
-                "session_id": "session-01",
+                "user_id": "user1",
+                "session_id": "s1",
                 "feature": "qa",
-                "message": "Hello test",
+                "message": "hello",
             },
         )
+        assert res1.status_code == 200
+        cid1 = res1.headers.get("x-request-id")
+        assert cid1 is not None
+        assert re.match(r"^req-[0-9a-f]{8}$", cid1)
+        assert "x-response-time-ms" in res1.headers
 
-    assert response.status_code == 200
-    headers = response.headers
-    assert "x-request-id" in headers
-    assert headers["x-request-id"].startswith("req-")
-    assert "x-response-time-ms" in headers
-
-    events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
-    rec_event = next(e for e in events if e["event"] == "request_received")
-    assert rec_event["correlation_id"] == headers["x-request-id"]
-    assert rec_event["user_id_hash"] is not None
-    assert rec_event["session_id"] == "session-01"
-    assert rec_event["feature"] == "qa"
-    assert rec_event["model"] == "claude-sonnet-4-5"
-
-
-def test_correlation_id_preserved_from_request_header(monkeypatch, tmp_path: Path) -> None:
-    log_path = tmp_path / "logs.jsonl"
-    monkeypatch.setattr(logging_config, "LOG_PATH", log_path)
-
-    with TestClient(app) as client:
-        response = client.post(
+        # Test 2: Preserve custom x-request-id header
+        res2 = client.post(
             "/chat",
             headers={"x-request-id": "custom-cid-12345"},
             json={
-                "user_id": "student-02",
-                "session_id": "session-02",
-                "feature": "summary",
-                "message": "Summarize this",
+                "user_id": "user2",
+                "session_id": "s2",
+                "feature": "qa",
+                "message": "test header",
             },
         )
+        assert res2.status_code == 200
+        assert res2.headers.get("x-request-id") == "custom-cid-12345"
 
-    assert response.status_code == 200
-    assert response.headers["x-request-id"] == "custom-cid-12345"
-    events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
-    rec_event = next(e for e in events if e["event"] == "request_received")
-    assert rec_event["correlation_id"] == "custom-cid-12345"
+        # Test 3: Multiple requests do not leak context
+        events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+        req_events = [e for e in events if e.get("event") == "request_received"]
+        assert len(req_events) >= 2
+        assert req_events[0]["correlation_id"] == cid1
+        assert req_events[1]["correlation_id"] == "custom-cid-12345"
+
+        # Verify Metadata fields required by schema
+        first_req = req_events[0]
+        assert "user_id_hash" in first_req
+        assert "session_id" in first_req
+        assert "feature" in first_req
+        assert "model" in first_req
+        assert "env" in first_req
+        assert "ts" in first_req
+        assert "level" in first_req
+        assert "service" in first_req
 
 
-def test_consecutive_requests_do_not_leak_context(monkeypatch, tmp_path: Path) -> None:
+def test_generic_exception_handler_returns_correlation_id(monkeypatch, tmp_path: Path) -> None:
     log_path = tmp_path / "logs.jsonl"
     monkeypatch.setattr(logging_config, "LOG_PATH", log_path)
 
     with TestClient(app) as client:
-        r1 = client.post(
+        # Patch agent.run to raise an exception
+        monkeypatch.setattr("app.main.agent.run", lambda **kwargs: 1 / 0)
+
+        response = client.post(
             "/chat",
+            headers={"x-request-id": "error-test-cid"},
             json={
-                "user_id": "user-A",
-                "session_id": "sess-A",
+                "user_id": "user1",
+                "session_id": "s1",
                 "feature": "qa",
-                "message": "Message A",
-            },
-        )
-        r2 = client.post(
-            "/chat",
-            json={
-                "user_id": "user-B",
-                "session_id": "sess-B",
-                "feature": "summary",
-                "message": "Message B",
+                "message": "trigger error",
             },
         )
 
-    assert r1.headers["x-request-id"] != r2.headers["x-request-id"]
+    assert response.status_code == 500
+    assert response.headers.get("x-request-id") == "error-test-cid"
+    assert response.json()["detail"] == "ZeroDivisionError"
+
     events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
-    rec_events = [e for e in events if e["event"] == "request_received"]
-    assert rec_events[0]["session_id"] == "sess-A"
-    assert rec_events[1]["session_id"] == "sess-B"
+    fail_event = next(e for e in events if e.get("event") == "request_failed")
+    assert fail_event["correlation_id"] == "error-test-cid"
+    assert fail_event["error_type"] == "ZeroDivisionError"

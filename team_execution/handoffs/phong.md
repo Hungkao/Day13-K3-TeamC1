@@ -1,22 +1,53 @@
-# Handoff Track 1: Phong — Logging, Correlation ID và PII
+# Handoff Track: Logging, Correlation ID & PII Redaction
+**Thành viên thực hiện**: Phong (01087_NguyenVanPhong)
 
-## 1. Danh sách file đã sửa / tạo mới
-- `app/middleware.py`: Triển khai `CorrelationIdMiddleware` với `clear_contextvars()`, trích xuất/sinh `x-request-id` theo format `req-<8 hex>`, bind contextvars, gán `request.state.correlation_id`, và trả headers `x-request-id`, `x-response-time-ms`.
-- `app/main.py`: Thêm `bind_contextvars` enrich context (`user_id_hash`, `session_id`, `feature`, `model`, `env`) trước log `request_received` trong endpoint `/chat`. Thêm `generic_exception_handler` để giữ `x-request-id` header khi có 500 error.
-- `app/logging_config.py`: Mở rộng `scrub_event` để lọc PII đệ quy cho tất cả chuỗi thuộc tính dict/string trong event dict và đăng ký `scrub_event` processor trước `JsonlFileProcessor`/`JSONRenderer`.
-- `app/pii.py`: Bổ sung regex patterns cho `passport` và `address_vn`.
-- `tests/test_pii.py`: Thêm test case kiểm tra redact CCCD, Credit Card, Passport, và Địa chỉ VN.
-- `tests/test_middleware_observability.py` (Mới): Thêm test case kiểm tra correlation ID sinh mới, correlation ID từ header request, và cách ly contextvars giữa các request liên tiếp.
+---
 
-## 2. Kết quả kiểm tra
-- **pytest**: Pass 26/26 tests (`.\.venv\Scripts\pytest`).
-- **validate_logs.py**: Đạt **100/100** điểm.
-  - Basic JSON schema: PASSED
-  - Correlation ID propagation: PASSED (10 unique correlation IDs)
-  - Log enrichment: PASSED
-  - PII scrubbing: PASSED (0 leaks detected)
+## 1. Danh sách các file đã sửa đổi / tạo mới
 
-## 3. Hướng dẫn nghiệm thu cho Vũ (Lead)
-- Chạy lệnh test: `.\.venv\Scripts\pytest`
-- Chạy load test sinh log: `.\.venv\Scripts\python scripts/load_test.py`
-- Kiểm tra log validator: `.\.venv\Scripts\python scripts/validate_logs.py`
+### Các file đã sửa đổi:
+1. `app/middleware.py`: 
+   - Thêm `clear_contextvars()` ở đầu request.
+   - Nhận `x-request-id` từ header hoặc tự sinh `req-<8 hex>`.
+   - Gắn `correlation_id` vào `structlog.contextvars` và `request.state`.
+   - Thêm `x-request-id` và `x-response-time-ms` vào HTTP response headers.
+2. `app/main.py`:
+   - Thêm `bind_contextvars` ở `/chat` để enrich log (`user_id_hash`, `session_id`, `feature`, `model`, `env`).
+   - Thêm `@app.exception_handler(Exception)` để đính kèm `x-request-id` vào HTTP 500 responses.
+3. `app/logging_config.py`:
+   - Uncomment và đính kèm `scrub_event` vào structlog processors pipeline (sau `TimeStamper` và trước `JsonlFileProcessor` + `JSONRenderer`).
+   - Cập nhật `scrub_event` quét đệ quy qua các chuỗi và dictionary (payload) để redact PII an toàn.
+4. `app/pii.py`:
+   - Bổ sung pattern Regex cho Passport (`passport`) và Địa chỉ Việt Nam (`address_vn`).
+5. `scripts/load_test.py`:
+   - Ưu tiên trích xuất `x-request-id` từ response headers.
+
+### Các file tạo mới:
+1. `tests/test_middleware_observability.py`: Unit tests cho Correlation ID, context isolation giữa các request, metadata schema, và 500 error handler.
+2. `tests/test_pii.py` (Mở rộng): Bổ sung test cases che PII cho CCCD, Credit Card, Passport, và Địa chỉ Việt Nam.
+3. `submission/evidence/logging/log_verification_results.txt`: Bằng chứng kết quả validator 100/100.
+4. `team_execution/handoffs/phong.md`: File handoff này.
+
+---
+
+## 2. Kết quả kiểm tra & Test Suite
+
+- **Pytest**: Passed toàn bộ 28 test cases (`28 passed, 2 warnings`).
+- **Log Validation Score**: **100/100** điểm (`python scripts/validate_logs.py`).
+  - `[PASSED] Basic JSON schema`
+  - `[PASSED] Correlation ID propagation`
+  - `[PASSED] Log enrichment`
+  - `[PASSED] PII scrubbing`
+
+---
+
+## 3. Hướng dẫn kiểm tra cho Lead (Vũ)
+
+1. **Chạy Test Suite**:
+   ```powershell
+   python -m pytest
+   ```
+2. **Kiểm tra Log Verification**:
+   ```powershell
+   python scripts/validate_logs.py
+   ```
